@@ -16,12 +16,17 @@ const Note = require('../models/note');
 router.get('/', (req, res, next) => {
 
   const { searchTerm } = req.query;
-    
+  const { folderId } = req.query;
+  
+
   let regSearch = {};
   let query;
 
 
   if (searchTerm) {
+    regSearch = { $regex: new RegExp(searchTerm, 'i') };
+    query = {$or: [ {title: regSearch } , {content: regSearch} ] };
+  } else if (folderId) {
     regSearch = { $regex: new RegExp(searchTerm, 'i') };
     query = {$or: [ {title: regSearch } , {content: regSearch} ] };
   }
