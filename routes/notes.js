@@ -12,7 +12,7 @@ const Note = require('../models/note');
 //ERROR HANDLING USING NEXT, TESTS THAT ANTICIPATE ERROR HANDLING
 
 
-/* ========== GET/READ ALL ITEM ========== */
+/* ========== GET/READ ALL ITEM ========= */
 router.get('/', (req, res, next) => {
 
   const { searchTerm } = req.query;
