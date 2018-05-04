@@ -8,55 +8,56 @@ const { MONGODB_URI } = require('../config');
 
 const Note = require('../models/note');
 const Folder = require('../models/folder');
+const Tag = require('../models/tag');
 
-//GET ALL FOLDERS, SORT BY NAME
+//GET all tags and search by tags;
 router.get('/', (req, res, next) => {
-
   const { searchTerm } = req.query;
-    
+  console.log('Im in tags router!');
   let regSearch = {};
   let query;
 
-
   if (searchTerm) {
     regSearch = { $regex: new RegExp(searchTerm, 'i') };
-    query = {$or: [ {title: regSearch } , {content: regSearch} ] };
+    query =  {name: regSearch};
   }
 
-
-  return Folder.find(query)
+  return Tag.find(query)
     .sort('name')
     .then(list => {
       res.json(list);
     });
-});
-//GET folder by ID.
 
+});
+
+
+// //GET one tag by id
 router.get('/:id', (req, res, next) => {
 
   const id = req.params.id;
+  
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('Invalid \':id\'');
     err.status = 400;
     return next(err);
   }
 
-  Folder.findById(id)
-    .then(result => {
-      if (result) {
-        res.json(result);
-      } else {
-        next();
-      }
+  return Tag.findById(id)
+    .then(list => {
+      res.status(200).json(list);
     })
+
     .catch(err => {
       next(err);
     });
- 
+
+
 });
 
-//POST 
+
+// POST /tags to create a new tag
 router.post('/', (req, res, next) => {
+  console.log(req.body.name);
        
   const createdObj = {};
   const updatableFields =['name'];
@@ -67,21 +68,27 @@ router.post('/', (req, res, next) => {
     }
   });
 
-  return Folder.create(createdObj)
+  
+  if(!createdObj.name){
+    const err = new Error('Must provide \'name\'');
+    err.status = 400;
+    return next(err);
+  }
+
+  return Tag.create(createdObj)
     .then(list => {
       res.location().status(201).json(list);
     })
     .catch(err => {
       if (err.code === 11000) {
-        err = new Error('The folder name already exists');
+        err = new Error('The tag name already exists');
         err.status = 400;
       }
       next(err);
     });
-
 });
 
-//PUT 
+// PUT /tags by id to update a tag
 router.put('/:id', (req, res, next) => {
 
 
@@ -93,6 +100,13 @@ router.put('/:id', (req, res, next) => {
     if (req.body[field]) {
       validUpdates[field] = req.body[field];
     }});
+
+      
+  if(!validUpdates.name){
+    const err = new Error('Must provide \'name\'');
+    err.status = 400;
+    return next(err);
+  }
   
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('Invalid \':id\'');
@@ -100,33 +114,45 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Folder.findByIdAndUpdate(id, { $set: validUpdates}, {new:true, upsert:false})
+  Tag.findByIdAndUpdate(id, { $set: validUpdates}, {new:true, upsert:false})
     .then((result) => {
       res.location(`${req.originalUrl}/${result.id}`).status(204).json(result);
     })
 
-    .catch(next);
+    .catch(err => {
+      if (err.code === 11000) {
+        err = new Error('The tag name already exists');
+        err.status = 400;
+      }
+      next(err);
+    });
 
 });
-
-//DELETE
+//DELETE by id deletes the tag AND removes it from the notes collection
 router.delete('/:id', (req, res, next) => {
 
   const id = req.params.id;
   
-  return Folder.findByIdAndRemove(id)
-    .then(folder => {
+
+  return Tag.findByIdAndRemove(id)
+    .then ( () => {
+      return Note.updateMany(
+        { $pull: { tags: id } }
+      );
+    })
+    .then( results => {
       res.status(204).end();
     })
-    .catch(console.error)
-
-
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      next(err);
     });
+
+     
+
 });
 
 
 
 module.exports = router;
+
+

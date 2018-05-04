@@ -7,8 +7,8 @@ const noteSchema = mongoose.Schema({
   content: {type: String},
   createdAt: {type: Date, default: Date.now},
   updatedAt: {type: Date, default: Date.now},
-  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' }
-
+  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' },
+  tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }],
 });
 
 noteSchema.set('toObject', {

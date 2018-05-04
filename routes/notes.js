@@ -17,8 +17,9 @@ router.get('/', (req, res, next) => {
 
   const { searchTerm } = req.query;
   const { folderId } = req.query;
-  
+    const { tagsId } = req.query;
 
+    console.log(tagsId);
   let regSearch = {};
   let query;
 
@@ -26,21 +27,21 @@ router.get('/', (req, res, next) => {
   if (searchTerm) {
     regSearch = { $regex: new RegExp(searchTerm, 'i') };
     query = {$or: [ {title: regSearch } , {content: regSearch} ] };
-  } else if (folderId) {
-    regSearch = { $regex: new RegExp(searchTerm, 'i') };
-    query = {$or: [ {title: regSearch } , {content: regSearch} ] };
+  } else if (tagsId) {
+     query = {tags: [tagsId] };
   }
 
+  console.log(query);
 
   return Note.find(query)
     .sort('created')
+    .populate('tags')
     .then(list => {
       res.json(list);
+    })
+    .catch(err => {
+      next(err);
     });
-
-
-  ///should return to next error
-  // .catch(console.error);
 
 
 });
@@ -64,27 +65,44 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-       
+  const { folderId } = req.body;
+    
   const createdObj = {};
-  const updatableFields =['title', 'content'];
-  
+  const updatableFields =['title', 'folderId', 'content'];
+  const keys = Object.keys(req.body);
+
+
   updatableFields.forEach(field => {
     if (req.body[field]) {
       createdObj[field] = req.body[field];
+    } 
+  });
+
+  keys.forEach(key => {
+    const validkey = updatableFields.includes(key);
+    console.log(validkey);
+
+    if(!updatableFields.includes(key)){
+      const error = new Error('Contains invalid keys');
+      error.status = 400;
+      return next(error);
     }
   });
-  
 
+  if (!mongoose.Types.ObjectId.isValid(folderId)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  } else {
+    createdObj.folderId = req.body.folderId;
+  }
 
   return Note.create(createdObj)
     .then(list => {
       res.location().status(201).json(list);
-    })
-    .catch(console.error)
-    
+    }) 
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      next(err);
     });
 
 });
